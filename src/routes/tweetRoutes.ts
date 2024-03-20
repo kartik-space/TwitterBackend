@@ -1,76 +1,93 @@
-import { PrismaClient } from "@prisma/client";
-import { Router } from "express";
+import { PrismaClient } from '@prisma/client';
+import { Router } from 'express';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// Tweet CRUD
+// User CRUD
 
-//** create tweet */
-router.post("/", async (req, res) => {
-  const { content, image } = req.body;
-  // @ts-ignore
-  const user = req.user;
+/*
+  Test with curl:
+
+  curl -X POST -H "Content-Type: application/json" \
+       -d '{"name": "Elon Musk", "email": "doge@twitter.com", "username": "elon"}' \
+       http://localhost:3000/user/
+
+*/
+// Create user
+router.post('/', async (req, res) => {
+  const { email, name, username } = req.body;
 
   try {
-    const result = await prisma.tweet.create({
+    const result = await prisma.user.create({
       data: {
-        content,
-        image,
-        userId: user.id,
+        email,
+        name,
+        username,
+        bio: "Hello, I'm new on Twitter",
       },
-      include: { user: true },
     });
 
     res.json(result);
   } catch (e) {
-    res.status(400).json({ error: "Username and email should be unique" });
+    res.status(400).json({ error: 'Username and email should be unique' });
   }
 });
 
-//** get all Tweet */
-router.get("/", async (req, res) => {
-  const allTweets = await prisma.tweet.findMany({
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          username: true,
-          image: true,
-        },
-      },
-    },
+// list users
+router.get('/', async (req, res) => {
+  const allUser = await prisma.user.findMany({
+    // select: {
+    //   id: true,
+    //   name: true,
+    //   image: true,
+    //   bio: true,
+    // },
   });
-  res.json(allTweets);
+
+  res.json(allUser);
 });
 
-//** get one Tweet */
-router.get("/:id", async (req, res) => {
+// get one user
+router.get('/:id', async (req, res) => {
   const { id } = req.params;
-  console.log("Query tweet with id: ", id);
-
-  const tweet = await prisma.tweet.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: Number(id) },
-    include: { user: true },
+    include: { tweets: true },
   });
-  if (!tweet) {
-    return res.status(404).json({ error: "Tweet not found!" });
+
+  res.json(user);
+});
+
+/*
+  Test with curl:
+
+  curl -X PUT -H "Content-Type: application/json" \
+       -d '{"name": "Vadim", "bio": "Hello there!"}' \
+       http://localhost:3000/user/1
+
+*/
+// update user
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { bio, name, image } = req.body;
+
+  try {
+    const result = await prisma.user.update({
+      where: { id: Number(id) },
+      data: { bio, name, image },
+    });
+    res.json(result);
+  } catch (e) {
+    res.status(400).json({ error: `Failed to update the user` });
   }
-
-  res.json(tweet);
 });
 
-//** update tweet */
-router.put("/:id", (req, res) => {
+// curl -X DELETE http://localhost:3000/user/6
+// delete user
+router.delete('/:id', async (req, res) => {
   const { id } = req.params;
-  res.status(501).json({ error: `Not Implemented: ${id}` });
-});
-
-//** delete Tweet */
-router.delete("/:id", async (req, res) => {
-  const { id } = req.params;
-  await prisma.tweet.delete({ where: { id: Number(id) } });
+  await prisma.user.delete({ where: { id: Number(id) } });
   res.sendStatus(200);
 });
 
